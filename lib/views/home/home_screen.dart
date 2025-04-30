@@ -13,13 +13,22 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final events = context.watch<EventViewModel>().events;
+    final events = context.watch<EventViewModel>().getUpcomingEvents();
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.appName),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.calendar_month, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text(AppStrings.appName),
+          ],
+        ),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: theme.colorScheme.surface,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -38,22 +47,51 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.event_note,
-                      size: 64,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.5),
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.event_note,
+                        size: 64,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     Text(
-                      'No events yet!',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      'No upcoming events!',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
-                      'Tap + to add your first event',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      'Let\'s add your first event!',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AddEditEventScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Your First Event'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -83,6 +121,8 @@ class HomeScreen extends StatelessWidget {
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Event'),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/family_event.dart';
 import '../../models/event_category.dart';
 import '../../view_models/event_view_model.dart';
+import '../../view_models/purchase_view_model.dart';
 import '../../resources/app_strings.dart';
 import '../../utils/date_utils.dart';
 
@@ -19,7 +20,7 @@ class AddEditEventScreen extends StatefulWidget {
 class _AddEditEventScreenState extends State<AddEditEventScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   EventCategory _selectedCategory = EventCategory.other;
   final _formKey = GlobalKey<FormState>();
   final _uuid = const Uuid();
@@ -42,27 +43,24 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
+  Future<void> _handlePurchase(
+    BuildContext context,
+    PurchaseViewModel purchaseVM,
+  ) async {
+    final success = await purchaseVM.buyPremium();
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You are now a Premium user!')),
+      );
+      // After successful purchase, try to save the event again
+      _saveEvent();
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Purchase failed. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -80,10 +78,55 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
               : _descriptionController.text,
     );
 
-    if (widget.event != null) {
-      context.read<EventViewModel>().updateEvent(event);
+    final isEditing = widget.event != null;
+    final purchaseVM = context.read<PurchaseViewModel>();
+    final eventVM = context.read<EventViewModel>();
+    final upcomingEvents = eventVM.getUpcomingEvents();
+
+    // Only enforce limit when adding (not editing)
+    if (!purchaseVM.isPremium && !isEditing && upcomingEvents.length >= 5) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Upgrade to Premium'),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Free plan allows up to 5 upcoming events.'),
+                    SizedBox(height: 12),
+                    Text('Premium unlocks:'),
+                    SizedBox(height: 4),
+                    Text('• Unlimited events'),
+                    Text('• All custom themes'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _handlePurchase(context, purchaseVM);
+                  },
+                  child: const Text('Upgrade to Premium'),
+                ),
+              ],
+            ),
+      );
+      return;
+    }
+
+    if (isEditing) {
+      eventVM.updateEvent(event);
     } else {
-      context.read<EventViewModel>().addEvent(event);
+      eventVM.addEvent(event);
     }
     Navigator.pop(context);
   }
@@ -91,12 +134,24 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.event != null;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Event' : 'Add Event'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isEditing ? Icons.edit : Icons.add_circle,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(isEditing ? 'Edit Event' : 'Add Event'),
+          ],
+        ),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: theme.colorScheme.surface,
         actions: [
           if (isEditing)
             IconButton(
@@ -121,11 +176,12 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                                 widget.event!.id,
                               );
                               Navigator.pop(context); // Close dialog
-                              Navigator.pop(
-                                context,
-                              ); // Return to previous screen
+                              Navigator.pop(context); // Close screen
                             },
-                            child: const Text('Delete'),
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(color: theme.colorScheme.error),
+                            ),
                           ),
                         ],
                       ),
@@ -140,26 +196,43 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Card(
+              elevation: 4,
+              shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Event Details',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_note,
+                          color: theme.colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Event Details',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
-                        labelText: 'Event Title',
-                        hintText: 'e.g., Birthday Party',
-                        border: OutlineInputBorder(),
+                        labelText: 'Title',
+                        hintText: 'Enter event title',
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter an event title';
+                          return 'Please enter a title';
                         }
                         return null;
                       },
@@ -168,9 +241,8 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                     TextFormField(
                       controller: _descriptionController,
                       decoration: const InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'Add event details...',
-                        border: OutlineInputBorder(),
+                        labelText: 'Description (Optional)',
+                        hintText: 'Enter event description',
                       ),
                       maxLines: 3,
                     ),
@@ -180,33 +252,59 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
             ),
             const SizedBox(height: 16),
             Card(
+              elevation: 4,
+              shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Category',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: theme.colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Date',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      children:
-                          EventCategory.values.map((category) {
-                            return ChoiceChip(
-                              label: Text(category.displayName),
-                              selected: _selectedCategory == category,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    _selectedCategory = category;
-                                  });
-                                }
-                              },
-                              avatar: Icon(category.icon),
-                            );
-                          }).toList(),
+                    InkWell(
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
+                        );
+                        if (date != null) {
+                          setState(() {
+                            _selectedDate = date;
+                          });
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Select Date',
+                        ),
+                        child: Text(
+                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -214,38 +312,81 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
             ),
             const SizedBox(height: 16),
             Card(
+              elevation: 4,
+              shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Date', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: _selectDate,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.category,
+                          color: theme.colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Category',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children:
+                          EventCategory.values.map((category) {
+                            final isSelected = _selectedCategory == category;
+                            return ChoiceChip(
+                              label: Text(
+                                category.displayName,
+                                style: TextStyle(
+                                  color:
+                                      isSelected
+                                          ? Colors.white
+                                          : theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              selected: isSelected,
+                              showCheckmark: false,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() {
+                                    _selectedCategory = category;
+                                  });
+                                }
+                              },
+                              avatar: Icon(
+                                category.icon,
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                              backgroundColor:
+                                  isSelected
+                                      ? theme.colorScheme.primary
+                                      : Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     ),
                   ],
                 ),
@@ -257,9 +398,28 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: _saveEvent,
-            child: Text(isEditing ? 'Update' : AppStrings.save),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: _saveEvent,
+              icon: Icon(isEditing ? Icons.save : Icons.add, size: 28),
+              label: Text(
+                isEditing ? 'Update Event' : 'Add Event',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ),

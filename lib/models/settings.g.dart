@@ -24,13 +24,14 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       notificationHour: fields[4] as int,
       selectedKidId: fields[5] as String?,
       nextNotificationId: fields[6] as int,
+      isPremium: fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Settings obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class SettingsAdapter extends TypeAdapter<Settings> {
       ..writeByte(5)
       ..write(obj.selectedKidId)
       ..writeByte(6)
-      ..write(obj.nextNotificationId);
+      ..write(obj.nextNotificationId)
+      ..writeByte(7)
+      ..write(obj.isPremium);
   }
 
   @override

@@ -40,4 +40,17 @@ class StorageService implements IStorageService {
   @override
   Future<void> saveSettings(Settings settings) async =>
       _settingsBox.put('settings', settings);
+
+  // Premium status
+  Future<bool> getPremiumStatus() async {
+    final settings = await getSettings();
+    return settings?.isPremium ?? false;
+  }
+
+  Future<void> setPremiumStatus(bool value) async {
+    final settings = await getSettings();
+    if (settings != null) {
+      await saveSettings(settings.copyWith(isPremium: value));
+    }
+  }
 }

@@ -3,14 +3,16 @@ import '../models/family_event.dart';
 import '../models/event_category.dart';
 import '../services/interfaces.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 
 class EventViewModel extends ChangeNotifier {
   final StorageService _storageService;
+  final NotificationService _notificationService;
   List<FamilyEvent> _events = [];
   String _searchQuery = '';
   EventCategory? _selectedCategory;
 
-  EventViewModel(this._storageService) {
+  EventViewModel(this._storageService, this._notificationService) {
     _loadEvents();
   }
 
@@ -28,16 +30,19 @@ class EventViewModel extends ChangeNotifier {
 
   Future<void> addEvent(FamilyEvent event) async {
     await _storageService.upsertEvent(event);
+    await _notificationService.scheduleTodayReminder(event, event.id.hashCode);
     await _loadEvents();
   }
 
   Future<void> updateEvent(FamilyEvent event) async {
     await _storageService.upsertEvent(event);
+    await _notificationService.scheduleTodayReminder(event, event.id.hashCode);
     await _loadEvents();
   }
 
   Future<void> deleteEvent(String id) async {
     await _storageService.deleteEvent(id);
+    await _notificationService.cancel(id.hashCode);
     await _loadEvents();
   }
 

@@ -171,9 +171,13 @@ class Model extends HiveObject {
   @HiveField(1)
   final String name;
 
+  @HiveField(7)
+  final bool isPremium;
+
   Model({
     required this.id,
     required this.name,
+    required this.isPremium,
   });
 }
 ```

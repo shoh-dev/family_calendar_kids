@@ -9,6 +9,7 @@ import 'resources/app_strings.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_service.dart';
+import 'services/theme_service.dart';
 import 'view_models/app_view_model.dart';
 import 'view_models/event_view_model.dart';
 import 'view_models/purchase_view_model.dart';
@@ -18,10 +19,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  // Clear Hive boxes to handle model changes
-  await Hive.deleteBoxFromDisk('events');
-  await Hive.deleteBoxFromDisk('settings');
-  await Hive.deleteBoxFromDisk('kids');
+  // // Clear Hive boxes to handle model changes
+  // await Hive.deleteBoxFromDisk('events');
+  // await Hive.deleteBoxFromDisk('settings');
+  // await Hive.deleteBoxFromDisk('kids');
 
   // Register Hive adapters
   Hive.registerAdapter(FamilyEventAdapter());
@@ -33,6 +34,7 @@ Future<void> main() async {
   final notificationService = NotificationService();
   await notificationService.init();
   final purchaseService = PurchaseService();
+  await purchaseService.init();
 
   runApp(
     MyApp(
@@ -60,16 +62,23 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppViewModel(storage)..load()),
-        ChangeNotifierProvider(create: (_) => EventViewModel(storage)..load()),
         ChangeNotifierProvider(
-          create: (_) => PurchaseViewModel(purchaseService),
+          create: (_) => EventViewModel(storage, notificationService)..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => PurchaseViewModel(purchaseService, storage),
         ),
       ],
-      child: MaterialApp(
-        title: AppStrings.appName,
-        theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
-        debugShowCheckedModeBanner: false,
-        home: const HomeScreen(),
+      child: Selector<AppViewModel, int>(
+        selector: (p0, p1) => p1.settings?.themeId ?? 0,
+        builder: (context, themeId, _) {
+          return MaterialApp(
+            title: AppStrings.appName,
+            theme: ThemeService.getTheme(themeId),
+            debugShowCheckedModeBanner: false,
+            home: const HomeScreen(),
+          );
+        },
       ),
     );
   }

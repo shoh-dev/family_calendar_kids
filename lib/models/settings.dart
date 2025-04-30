@@ -24,6 +24,9 @@ class Settings extends HiveObject {
   @HiveField(6)
   final int nextNotificationId;
 
+  @HiveField(7)
+  final bool isPremium;
+
   Settings({
     required this.id,
     required this.themeId,
@@ -32,6 +35,7 @@ class Settings extends HiveObject {
     this.notificationHour = 0,
     this.selectedKidId,
     this.nextNotificationId = 0,
+    this.isPremium = false,
   });
 
   factory Settings.defaultSettings() {
@@ -40,6 +44,7 @@ class Settings extends HiveObject {
       themeId: 0,
       isDarkMode: false,
       notificationsEnabled: true,
+      isPremium: false,
     );
   }
 
@@ -51,6 +56,7 @@ class Settings extends HiveObject {
     int? notificationHour,
     String? selectedKidId,
     int? nextNotificationId,
+    bool? isPremium,
   }) {
     return Settings(
       id: id ?? this.id,
@@ -60,6 +66,7 @@ class Settings extends HiveObject {
       notificationHour: notificationHour ?? this.notificationHour,
       selectedKidId: selectedKidId ?? this.selectedKidId,
       nextNotificationId: nextNotificationId ?? this.nextNotificationId,
+      isPremium: isPremium ?? this.isPremium,
     );
   }
 }
