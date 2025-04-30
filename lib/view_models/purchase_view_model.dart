@@ -6,46 +6,52 @@ import '../models/settings.dart';
 import '../services/purchase_service.dart';
 
 class PurchaseViewModel extends ChangeNotifier {
-  final IPurchaseService purchaseService;
-  final StorageService storageService;
-  bool isPremium = false;
+  final IPurchaseService _purchaseService;
+  final IStorageService _storage;
+  bool _isPremium = false;
   StreamSubscription<bool>? _purchaseSubscription;
 
-  PurchaseViewModel(this.purchaseService, this.storageService) {
-    _loadPremiumStatus();
-    if (purchaseService is PurchaseService) {
-      _purchaseSubscription = (purchaseService as PurchaseService)
-          .purchaseStream
-          .listen((isPremium) => _updatePremiumStatus(isPremium));
+  PurchaseViewModel(this._purchaseService, this._storage) {
+    loadPremiumStatus();
+    if (_purchaseService is PurchaseService) {
+      _purchaseSubscription = _purchaseService.purchaseStream.listen((
+        isPremium,
+      ) {
+        _isPremium = isPremium;
+        _updatePremiumStatus(isPremium);
+        notifyListeners();
+      });
     }
   }
 
-  Future<void> _loadPremiumStatus() async {
-    final settings = await storageService.getSettings();
-    isPremium = settings?.isPremium ?? false;
+  bool get isPremium => _isPremium;
+
+  Future<void> loadPremiumStatus() async {
+    final settings = await _storage.getSettings();
+    _isPremium = settings?.isPremium ?? false;
     notifyListeners();
   }
 
   Future<bool> buyPremium() async {
-    final success = await purchaseService.buyPremium();
+    final success = await _purchaseService.buyPremium();
     if (success) {
+      _isPremium = true;
       await _updatePremiumStatus(true);
+      notifyListeners();
     }
     return success;
   }
 
   Future<void> restorePurchases() async {
-    await purchaseService.restorePurchases();
+    await _purchaseService.restorePurchases();
     // The actual status update will happen through the purchase stream
   }
 
-  Future<void> _updatePremiumStatus(bool status) async {
-    isPremium = status;
-    final settings =
-        await storageService.getSettings() ?? Settings.defaultSettings();
-    final updatedSettings = settings.copyWith(isPremium: status);
-    await storageService.saveSettings(updatedSettings);
-    notifyListeners();
+  Future<void> _updatePremiumStatus(bool isPremium) async {
+    final settings = await _storage.getSettings();
+    if (settings != null) {
+      await _storage.saveSettings(settings.copyWith(isPremium: isPremium));
+    }
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../view_models/app_view_model.dart';
 import '../../view_models/purchase_view_model.dart';
 import '../../utils/extensions.dart';
+import '../../models/settings.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -452,6 +453,108 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+
+          // Debug Card (only visible in debug mode)
+          if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+            const SizedBox(height: 16),
+            Card(
+              elevation: 4,
+              shadowColor: Colors.red.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            Icons.bug_report,
+                            color: Colors.red,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Debug Options',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final settings =
+                                  context.read<AppViewModel>().settings;
+                              if (settings != null) {
+                                context.read<AppViewModel>().toggleTheme(
+                                  settings.themeId,
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Refresh Theme'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final settings =
+                                  context.read<AppViewModel>().settings;
+                              if (settings != null) {
+                                final newSettings = settings.copyWith(
+                                  isPremium: !isPremium,
+                                );
+                                context.read<AppViewModel>().updateSettings(
+                                  newSettings,
+                                );
+                                // Force PurchaseViewModel to update
+                                context
+                                    .read<PurchaseViewModel>()
+                                    .loadPremiumStatus();
+                              }
+                            },
+                            icon: Icon(
+                              isPremium ? Icons.lock : Icons.lock_open,
+                            ),
+                            label: Text(
+                              isPremium
+                                  ? 'Switch to Free'
+                                  : 'Switch to Premium',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isPremium ? Colors.red : Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

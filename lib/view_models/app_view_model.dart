@@ -18,4 +18,10 @@ class AppViewModel extends ChangeNotifier {
     await storage.saveSettings(settings!);
     notifyListeners();
   }
+
+  Future<void> updateSettings(Settings newSettings) async {
+    settings = newSettings;
+    await storage.saveSettings(settings!);
+    notifyListeners();
+  }
 }
