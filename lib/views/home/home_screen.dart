@@ -96,21 +96,23 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               )
-              : Column(
-                children: [
-                  if (events.isNotEmpty) CountdownBanner(event: events.first),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: events.length,
-                      itemBuilder:
-                          (_, i) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: EventCard(event: events[i]),
-                          ),
+              : SafeArea(
+                child: Column(
+                  children: [
+                    if (events.isNotEmpty) CountdownBanner(event: events.first),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: events.length,
+                        itemBuilder:
+                            (_, i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: EventCard(event: events[i]),
+                            ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

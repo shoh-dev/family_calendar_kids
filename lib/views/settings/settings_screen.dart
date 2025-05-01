@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../view_models/app_view_model.dart';
@@ -455,7 +456,7 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           // Debug Card (only visible in debug mode)
-          if (const bool.fromEnvironment('dart.vm.product') == false) ...[
+          if (kDebugMode) ...[
             const SizedBox(height: 16),
             Card(
               elevation: 4,

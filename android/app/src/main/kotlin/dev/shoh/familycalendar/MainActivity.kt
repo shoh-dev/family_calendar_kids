@@ -1,4 +1,4 @@
-package com.example.family_calendar_kids
+package dev.shoh.familycalendar
 
 import io.flutter.embedding.android.FlutterActivity
 
