@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -12,10 +14,22 @@ class NotificationService implements INotificationService {
   Future<void> init() async {
     tz.initializeTimeZones();
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     await _fln.initialize(
       const InitializationSettings(android: android, iOS: ios),
     );
+
+    if (Platform.isAndroid) {
+      await _fln
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    }
   }
 
   @override
@@ -36,18 +50,19 @@ class NotificationService implements INotificationService {
       channelDescription: 'Daily event reminders',
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
     );
+    final iosDetails = DarwinNotificationDetails();
+
     await _fln.zonedSchedule(
       notificationId,
       'Today is ${event.title}!',
       'Tap to open the app.',
       date,
-      NotificationDetails(android: androidDetails),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: '${HiveKeys.payloadEventId}:${event.id}',
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dateAndTime,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
